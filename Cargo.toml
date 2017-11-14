@@ -1,0 +1,12 @@
+[package]
+name = "fasttext"
+version = "0.1.0"
+authors = ["alexey <piyanin@gmail.com>"]
+build = "build.rs"
+
+[build-dependencies]
+cc = "1"
+
+[dependencies]
+libc = "0.2"
+clippy = "*"
