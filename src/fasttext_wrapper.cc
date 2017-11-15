@@ -22,6 +22,12 @@ extern "C" {
         fasttext::Vector *vector;
     };
 
+    struct WrapperString {
+        char*        str;
+        unsigned int len;
+        unsigned int cap;
+    };
+
     struct PredictRecord {
         float       predict;
         const char* word;
@@ -82,6 +88,11 @@ int checkVectorsFile(const std::string& path, const int ndim) {
     return RES_OK;
 }
 
+void stringInit(struct WrapperString *wrapper, const std::string& str) {
+    strncpy(wrapper->str, str.c_str(), wrapper->cap);
+    wrapper->len = str.length();
+}
+
 void predictResultResize(struct PredictResult* result, size_t sz) {
     result->records_.resize(sz);
     result->words_.resize(sz);
@@ -132,16 +143,26 @@ extern "C" {
         return int(wrapper->dict->getId(word));
     }
 
-    int DICT_GetWord(struct WrapperDictionary* wrapper, int id, char *result, size_t max_len) {
-        auto word = wrapper->dict->getWord(id);
-
-        strncpy(result, word.c_str(), max_len);
-
-        return word.length();
+    void DICT_GetWord(struct WrapperDictionary* wrapper, int id, struct WrapperString *str) {
+        stringInit(str, wrapper->dict->getWord(id));
     }
 
     int DICT_WordsCount(struct WrapperDictionary* wrapper) {
         return wrapper->dict->nwords();
+    }
+
+    struct WrapperVector* test_VEC_New(short empty, int sz) {
+        auto wrapper = Vector(sz);
+
+        if(empty) {
+            wrapper->vector->zero();
+        } else {
+            for(unsigned int i=0; i<wrapper->vector->size(); i++) {
+                wrapper->vector->data_[i] = 1. + (1./float(i + 0.0001)) * (float(i) * float(i) * 1.019238);
+            }
+        }
+
+        return wrapper;
     }
 
     void VEC_Release(struct WrapperVector* wrapper) {
@@ -217,11 +238,11 @@ extern "C" {
         return RES_OK;
     }
 
-    struct WrapperDictionary* FT_GetDictionary(struct WrapperFastText* wrapper) {
+    struct WrapperDictionary* FT_GetDictionary(const struct WrapperFastText* wrapper) {
         return Dictionary(wrapper->model->getDictionary());
     }
 
-    struct WrapperVector* FT_GetVector(struct WrapperFastText* wrapper, const char* word) {
+    struct WrapperVector* FT_GetWordVector(const struct WrapperFastText* wrapper, const char* word) {
         struct WrapperVector* wrap_vector = Vector(wrapper->model->getDimension());
 
         wrapper->model->getWordVector(*wrap_vector->vector, word);

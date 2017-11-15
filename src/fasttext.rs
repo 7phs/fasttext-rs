@@ -1,12 +1,12 @@
-use libc::{c_int, c_uchar, calloc, memcpy, free, strnlen, c_void};
+use libc::{c_int, c_uint, c_float};
 use std::path::Path;
-use std::ffi::{CStr, CString, OsString};
 use std::os::raw::c_char;
-use std::error::Error;
 use std::str;
-use std::mem;
+use vector::{WrapperWordVector, Vector};
 
 pub const RES_OK: ResSuccess = ResSuccess(0);
+
+const MAX_WORD_LEN: usize = 256;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ResSuccess(i32);
@@ -20,18 +20,35 @@ pub enum Err {
 }
 
 #[repr(C)]
+struct WrapperString {
+    str: *mut c_char,
+    len: c_uint,
+    cap: c_uint,
+}
+
+impl WrapperString {
+    unsafe fn new(buf: &Vec<u8>) -> WrapperString {
+        WrapperString {
+            str: buf.as_ptr() as *mut c_char,
+            len: 0,
+            cap: buf.len() as c_uint,
+        }
+    }
+}
+
+#[repr(C)]
 struct WrapperDictionary;
 
 extern "C" {
     fn DICT_Find(wrapper: *const WrapperDictionary, word: *const c_char) -> c_int;
-    fn DICT_GetWord(wrapper: *const WrapperDictionary, index: c_int, word: *mut c_char, max_len: c_int) -> c_int;
+    fn DICT_GetWord(wrapper: *const WrapperDictionary, index: c_int, word: *mut WrapperString);
     fn DICT_WordsCount(wrapper: *const WrapperDictionary) -> c_int;
 }
 
 #[derive(Debug)]
 pub struct Dictionary(*const WrapperDictionary);
 
-impl Dictionary {
+impl Dictionary{
     pub fn find(&self, word: &str) -> Option<i32> {
         let index = unsafe { DICT_Find(self.0, word.as_ptr() as *const c_char) };
         if index >= 0 {
@@ -42,9 +59,13 @@ impl Dictionary {
     }
 
     pub fn get_word(&self, index: i32) -> Option<String> {
-        let mut c_word = vec![0u8; 256];
+        let mut c_word = vec![0u8; MAX_WORD_LEN];
 
-        let len = unsafe { DICT_GetWord(self.0, index as c_int, c_word.as_ptr() as *mut c_char, c_word.len() as i32) } as usize;
+        let len = unsafe {
+            let mut wrap_word = WrapperString::new(&c_word);
+            DICT_GetWord(self.0, index as c_int, &mut wrap_word);
+            wrap_word.len
+        } as usize;
 
         c_word.resize(len, 0u8);
 
@@ -72,6 +93,7 @@ extern "C" {
     fn FT_LoadModel(wrapper: *mut WrapperFastText, model_path: *const c_char) -> c_int;
     fn FT_LoadVectors(wrapper: *mut WrapperFastText, vectors_path: *const c_char) -> c_int;
     fn FT_GetDictionary(wrapper: *const WrapperFastText) -> *const WrapperDictionary;
+    fn FT_GetWordVector(wrapper: *const WrapperFastText, word: *const c_char) -> *mut WrapperWordVector;
     fn FT_Release(wrapper: *mut WrapperFastText);
 }
 
@@ -115,112 +137,14 @@ impl FastText {
             Dictionary(FT_GetDictionary(self.0))
         }
     }
-}
 
+    pub fn word_to_vector(&self, word: &str) -> Option<Vector> {
+        let vec = unsafe { Vector::new(FT_GetWordVector(self.0, word.as_ptr() as *const c_char)) };
 
-#[cfg(test)]
-mod testing {
-    use super::*;
-    use std::path::Path;
-
-    const UNKNOWN_PATH: &str = "unknown path";
-    const UNSUPERVISED_MODEL_PATH: &str = "./test-data/unsupervised_model.bin";
-    const UNSUPERVISED_VECTORS_PATH: &str = "./test-data/unsupervised_model.vec";
-
-    #[test]
-    fn test_fasttext_new() {
-        FastText::new();
-    }
-
-    #[test]
-    fn test_fasttext_load_model() {
-        let mut model = FastText::new();
-
-        match model.load_model(Path::new(UNKNOWN_PATH)) {
-            Ok(_) => assert!(false, "failed to raise an error for an unknown model path"),
-            Err(_) => assert!(true),
+        if !vec.is_empty() {
+            Some(vec)
+        } else {
+            None
         }
-
-        match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
-            Ok(_) => assert!(true),
-            Err(err) => assert!(false, err),
-        }
-    }
-
-    #[test]
-    fn test_fasttext_load_vectors() {
-        let mut model = FastText::new();
-
-        match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
-            Ok(_) => assert!(true),
-            Err(err) => {
-                println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
-                assert!(false)
-            }
-        }
-
-        match model.load_vectors(Path::new(UNKNOWN_PATH)) {
-            Ok(_) => {
-                println!("failed to raise an error for an unknown vectors path");
-                assert!(false)
-            }
-            Err(_) => assert!(true),
-        }
-
-        match model.load_vectors(Path::new(UNSUPERVISED_VECTORS_PATH)) {
-            Ok(_) => assert!(true),
-            Err(err) => {
-                println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
-                assert!(false)
-            }
-        }
-    }
-
-    #[test]
-    fn test_fasttext_get_dictionary() {
-        let mut model = FastText::new();
-
-        match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
-            Ok(_) => assert!(true),
-            Err(err) => {
-                println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
-                assert!(false)
-            }
-        }
-
-        match model.load_vectors(Path::new(UNSUPERVISED_VECTORS_PATH)) {
-            Ok(_) => assert!(true),
-            Err(err) => {
-                println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
-                assert!(false)
-            }
-        }
-
-        let dict = model.get_dictionary();
-
-        let w_count = dict.words_count();
-        if w_count <= 0 {
-            println!("word count shoud greater then 0, but got {:?}", w_count);
-            assert!(false)
-        }
-
-        let expected_word: &str = "златом";
-        let expected_index: i32 = 22;
-
-        match dict.find(expected_word) {
-            Some(index) => assert_eq!(index, expected_index),
-            None => {
-                println!("failed to found word {}", expected_word);
-                assert!(false)
-            }
-        };
-
-        match dict.get_word(expected_index) {
-            Some(word) => assert_eq!(word, expected_word),
-            None => {
-                println!("failed to found word by index {}", expected_index);
-                assert!(false)
-            }
-        };
     }
 }
