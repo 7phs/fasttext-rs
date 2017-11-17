@@ -1,11 +1,16 @@
-#[cfg(test)]
 use fasttext::*;
+use predict::PredictRecord;
 use std::path::Path;
-use std::ops::Deref;
 
-const UNKNOWN_PATH: &str = "unknown path";
-const UNSUPERVISED_MODEL_PATH: &str = "./test-data/unsupervised_model.bin";
-const UNSUPERVISED_VECTORS_PATH: &str = "./test-data/unsupervised_model.vec";
+static UNKNOWN_PATH: &'static str = "unknown path";
+static UNSUPERVISED_MODEL_PATH: &'static str = "./test-data/unsupervised_model.bin";
+static UNSUPERVISED_VECTORS_PATH: &'static str = "./test-data/unsupervised_model.vec";
+static SUPERVISED_MODEL_PATH: &'static str = "./test-data/supervised_model.bin";
+static SUPERVISED_VECTORS_PATH: &'static str = "./test-data/supervised_model.vec";
+
+fn path(p: &str) -> &Path {
+    Path::new(p)
+}
 
 #[test]
 fn test_fasttext_new() {
@@ -16,12 +21,12 @@ fn test_fasttext_new() {
 fn test_fasttext_load_model() {
     let mut model = FastText::new();
 
-    match model.load_model(Path::new(UNKNOWN_PATH)) {
+    match model.load_model(path(UNKNOWN_PATH)) {
         Ok(_) => assert!(false, "failed to raise an error for an unknown model path"),
         Err(_) => assert!(true),
     }
 
-    match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => assert!(false, err),
     }
@@ -31,7 +36,7 @@ fn test_fasttext_load_model() {
 fn test_fasttext_load_vectors() {
     let mut model = FastText::new();
 
-    match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
@@ -39,7 +44,7 @@ fn test_fasttext_load_vectors() {
         }
     }
 
-    match model.load_vectors(Path::new(UNKNOWN_PATH)) {
+    match model.load_vectors(path(UNKNOWN_PATH)) {
         Ok(_) => {
             println!("failed to raise an error for an unknown vectors path");
             assert!(false)
@@ -47,7 +52,7 @@ fn test_fasttext_load_vectors() {
         Err(_) => assert!(true),
     }
 
-    match model.load_vectors(Path::new(UNSUPERVISED_VECTORS_PATH)) {
+    match model.load_vectors(path(UNSUPERVISED_VECTORS_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
@@ -60,7 +65,7 @@ fn test_fasttext_load_vectors() {
 fn test_fasttext_get_dictionary() {
     let mut model = FastText::new();
 
-    match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
@@ -68,7 +73,7 @@ fn test_fasttext_get_dictionary() {
         }
     }
 
-    match model.load_vectors(Path::new(UNSUPERVISED_VECTORS_PATH)) {
+    match model.load_vectors(path(UNSUPERVISED_VECTORS_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
@@ -84,10 +89,10 @@ fn test_fasttext_get_dictionary() {
         assert!(false)
     }
 
-    let expected_word: &str = "златом";
+    let expected_word = String::from("златом");
     let expected_index: i32 = 22;
 
-    match dict.find(expected_word) {
+    match dict.find(expected_word.as_str()) {
         Some(index) => assert_eq!(index, expected_index),
         None => {
             println!("failed to found word {}", expected_word);
@@ -108,7 +113,7 @@ fn test_fasttext_get_dictionary() {
 fn test_fasttext_get_word_vector() {
     let mut model = FastText::new();
 
-    match model.load_model(Path::new(UNSUPERVISED_MODEL_PATH)) {
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
@@ -116,7 +121,7 @@ fn test_fasttext_get_word_vector() {
         }
     }
 
-    match model.load_vectors(Path::new(UNSUPERVISED_VECTORS_PATH)) {
+    match model.load_vectors(path(UNSUPERVISED_VECTORS_PATH)) {
         Ok(_) => assert!(true),
         Err(err) => {
             println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
@@ -124,7 +129,7 @@ fn test_fasttext_get_word_vector() {
         }
     }
 
-    let word = "златом";
+    let word = String::from("златом");
     let expected_vec = vec![
         -0.00093162473f32, -0.00064210495, -0.0009707032, 0.00031974318, -0.0002315091, 0.002165826, 0.0018783867, 0.0021941606, 0.0014265366, -0.0004747169,
         0.00042756647, 0.002485942, -3.925598e-05, 0.0019237917, -0.0005152924, 0.00038866568, 0.0009962652, 1.5210654e-05, -0.0002595325, -0.00020531945,
@@ -137,19 +142,127 @@ fn test_fasttext_get_word_vector() {
         0.002425637, 0.0033935579, 0.00022636236, 0.00014700758, -0.00064028014, -0.00031854503, -0.00012771421, 0.00016985959, 0.0013882271, -0.0021626558,
         0.0010302362, 0.0005801475, -0.0024974225, -0.00091070565, -0.00015146619, -0.0018224111, -0.0011335025, -9.8327204e-05, 0.00093681796, 0.00021071793,
     ];
-    const coeff: f32 = 1000.0;
+    const COEFF: f32 = 1000.0;
 
-    match model.word_to_vector(word) {
+    match model.word_to_vector(word.as_str()) {
         Some(vec) => assert_eq!(
-            vec.deref().iter()
-                .map(|v| (v * coeff).trunc())
+            vec.as_slice().iter()
+                .map(|v| (v * COEFF).trunc())
                 .collect::<Vec<f32>>(),
             expected_vec.iter()
-                .map(|v| (v * coeff).trunc())
+                .map(|v| (v * COEFF).trunc())
                 .collect::<Vec<f32>>()),
         None => {
             println!("failed to get vector for word {:?}", word);
             assert!(false)
         }
+    };
+}
+
+#[test]
+fn test_fasttext_get_sentence_vector() {
+    let mut model = FastText::new();
+
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => {
+            println!("Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err);
+            assert!(false)
+        }
     }
+
+    match model.load_vectors(path(UNSUPERVISED_VECTORS_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => {
+            println!("Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err);
+            assert!(false)
+        }
+    }
+
+    let text = String::from("Кащей над златом чахнет");
+    let expected_vec = vec![
+        0.037130516f32, -0.023536012, -0.05462671, -0.0033913944, -0.018964574, 0.06834176, 0.11407065, 0.16753219, 0.054430895, 0.08919889,
+        0.062001314, 0.12970737, -0.08993994, -0.0013820566, 0.0024787933, 0.015299875, 0.043955993, -0.02965922, -0.002137018, -0.033652093,
+        0.03392063, -0.084329106, 0.07451887, 0.020768367, -0.020052189, 0.009265052, -0.020497253, 0.13506308, 0.027629945, -0.036651403,
+        -0.053276077, 0.00411354, 0.035692926, 0.025573859, 0.015886994, 0.046156306, 0.03847931, -0.013042267, -0.016854543, 0.017981935,
+        0.03060818, 0.009657327, -0.13549992, -0.02106245, 0.018689439, 0.0015525157, 0.0126991235, 0.03377308, 0.045630272, 0.047137648,
+        0.014620029, 0.1009623, -0.05738701, -0.053834576, 0.06026704, -0.011569845, 0.02681889, -0.027683325, -0.0058202855, -0.010907434,
+        -0.060490265, -0.0024461383, 0.10436508, -0.0076349233, 0.019921903, -0.038126707, 0.03616117, 0.0049869185, 0.027135931, 0.026441898,
+        0.027044544, 0.013437899, 0.019479826, 0.051475823, 0.06197407, -0.045852486, -0.016118113, 0.10718948, 0.017485319, -0.02544314,
+        -0.026579026, 0.11026137, 0.064151205, 0.0035600364, -0.0493346, 0.021935625, -0.010017559, 0.04056901, 0.04047651, -0.0039925557,
+        0.029625436, 0.030468367, -0.07004885, -0.028973147, 0.0024994463, -0.032818604, -0.092352696, -0.014490175, 0.07920408, -0.0061761905
+    ];
+    const COEFF: f32 = 1000.0;
+
+    match model.sentence_to_vector(text.as_str()) {
+        Some(vec) => assert_eq!(
+            vec.as_slice().iter()
+                .map(|v| (v * COEFF).trunc())
+                .collect::<Vec<f32>>(),
+            expected_vec.as_slice().iter()
+                .map(|v| (v * COEFF).trunc())
+                .collect::<Vec<f32>>(),
+            "check word vector"
+        ),
+        None => assert!(false, "failed to get vector for sentence {:?}", text),
+    };
+}
+
+#[test]
+fn test_fasttext_predict_unsupervised() {
+    let mut model = FastText::new();
+
+    match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => assert!(false, "Failed to load model {:?} with error {:?}", UNSUPERVISED_MODEL_PATH, err),
+    }
+
+    match model.load_vectors(path(UNSUPERVISED_VECTORS_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => assert!(false, "Failed to load vectors {:?} with error {:?}", UNSUPERVISED_VECTORS_PATH, err),
+    }
+
+    let text = String::from("Куда сходить вечером");
+
+    match model.predict(text.as_str(), 10) {
+        Ok(_) => assert!(false, "predict wasn't implemented unimplgot empty result for sentence {:?}", text),
+        Err(_) => assert!(true),
+    };
+}
+
+#[test]
+fn test_fasttext_predict_supervised() {
+    let mut model = FastText::new();
+
+    match model.load_model(path(SUPERVISED_MODEL_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => assert!(false, "Failed to load model {:?} with error {:?}", SUPERVISED_MODEL_PATH, err),
+    }
+
+    match model.load_vectors(path(SUPERVISED_VECTORS_PATH)) {
+        Ok(_) => assert!(true),
+        Err(err) => assert!(false, "Failed to load vectors {:?} with error {:?}", SUPERVISED_VECTORS_PATH, err),
+    }
+
+    let text = String::from("Куда сходить вечером");
+    let expected_result = vec![
+        PredictRecord::new(-1.1025261, "__label__пожелание"),
+        PredictRecord::new(-1.1025261, "__label__вопрос"),
+        PredictRecord::new(-1.1025261, "__label__приветствие"),
+    ];
+
+    match model.predict(text.as_str(), 10) {
+        Ok(result) => {
+            if result.is_empty() {
+                assert!(false, "got empty result for sentence {:?}", text);
+            } else {
+                assert_eq!(
+                    result.as_slice(),
+                    expected_result.as_slice(),
+                    "check predict result"
+                );
+            }
+        },
+        Err(err) => assert!(false, "failed to predict for sentence {:?}, {:?}", text, err),
+    };
 }

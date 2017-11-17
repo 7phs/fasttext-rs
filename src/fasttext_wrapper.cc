@@ -2,6 +2,9 @@
 #include <sstream>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "fasttext/src/fasttext.h"
 
 const int RES_OK = 0;
@@ -28,18 +31,18 @@ extern "C" {
         unsigned int cap;
     };
 
-    struct PredictRecord {
+    struct WrapperPredictRecord {
         float       predict;
         const char* word;
     };
 
-    struct PredictResult {
-        PredictRecord* records;
-        const char*    err;
+    struct WrapperPredictResult {
+        const WrapperPredictRecord* records;
+        const char*                 err;
 
-        std::vector<PredictRecord> records_;
-        std::vector<std::string>   words_;
-        std::string    err_;
+        std::vector<WrapperPredictRecord> records_;
+        std::vector<std::string>          words_;
+        std::string                       err_;
     };
 }
 
@@ -93,12 +96,12 @@ void stringInit(struct WrapperString *wrapper, const std::string& str) {
     wrapper->len = str.length();
 }
 
-void predictResultResize(struct PredictResult* result, size_t sz) {
+void predictResultResize(struct WrapperPredictResult* result, size_t sz) {
     result->records_.resize(sz);
     result->words_.resize(sz);
 }
 
-void predictResultSet(struct PredictResult* result, size_t i, std::pair<float, std::string>& rec) {
+void predictResultSet(struct WrapperPredictResult* result, size_t i, std::pair<float, std::string>& rec) {
     auto& new_rec = result->records_[i];
     auto& new_word = result->words_[i];
 
@@ -106,12 +109,12 @@ void predictResultSet(struct PredictResult* result, size_t i, std::pair<float, s
     new_word = std::get<1>(rec);
 }
 
-void predictResultSetError(struct PredictResult* result, const char* str) {
+void predictResultSetError(struct WrapperPredictResult* result, const char* str) {
     result->err_ = std::string(str);
     result->err = result->err_.c_str();
 }
 
-void predictResultFinish(struct PredictResult* result) {
+void predictResultFinish(struct WrapperPredictResult* result) {
     auto& records = result->records_;
     auto& words = result->words_;
 
@@ -139,30 +142,16 @@ struct WrapperDictionary* Dictionary(std::shared_ptr<const fasttext::Dictionary>
 }
 
 extern "C" {
-    int DICT_Find(struct WrapperDictionary* wrapper, const char* word) {
+    int DICT_Find(const struct WrapperDictionary* wrapper, const char* word) {
         return int(wrapper->dict->getId(word));
     }
 
-    void DICT_GetWord(struct WrapperDictionary* wrapper, int id, struct WrapperString *str) {
+    void DICT_GetWord(const struct WrapperDictionary* wrapper, int id, struct WrapperString *str) {
         stringInit(str, wrapper->dict->getWord(id));
     }
 
-    int DICT_WordsCount(struct WrapperDictionary* wrapper) {
+    int DICT_WordsCount(const struct WrapperDictionary* wrapper) {
         return wrapper->dict->nwords();
-    }
-
-    struct WrapperVector* test_VEC_New(short empty, int sz) {
-        auto wrapper = Vector(sz);
-
-        if(empty) {
-            wrapper->vector->zero();
-        } else {
-            for(unsigned int i=0; i<wrapper->vector->size(); i++) {
-                wrapper->vector->data_[i] = 1. + (1./float(i + 0.0001)) * (float(i) * float(i) * 1.019238);
-            }
-        }
-
-        return wrapper;
     }
 
     void VEC_Release(struct WrapperVector* wrapper) {
@@ -171,7 +160,7 @@ extern "C" {
         free(wrapper);
     }
 
-    int VEC_Size(struct WrapperVector* wrapper) {
+    int VEC_Len(struct WrapperVector* wrapper) {
         return wrapper->vector->size();
     }
 
@@ -179,19 +168,19 @@ extern "C" {
         return wrapper->vector->data_;
     }
 
-    int PRDCT_Len(struct PredictResult* result) {
-        return result->records_.size();
+    int PRDCT_Len(const struct WrapperPredictResult* wrapper) {
+        return wrapper->records_.size();
     }
 
-    struct PredictRecord* PRDCT_Records(struct PredictResult* result) {
-        return result->records;
+    const struct WrapperPredictRecord* PRDCT_Records(const struct WrapperPredictResult* wrapper) {
+        return wrapper->records;
     }
 
-    const char* PRDCT_Error(struct PredictResult* result) {
-        return result->err;
+    const char* PRDCT_Error(const struct WrapperPredictResult* wrapper) {
+        return wrapper->err;
     }
 
-    void PRDCT_Release(struct PredictResult* result) {
+    void PRDCT_Release(const struct WrapperPredictResult* result) {
         delete result;
     }
 
@@ -206,7 +195,7 @@ extern "C" {
     int FT_LoadModel(struct WrapperFastText* wrapper, const char* path) {
         std::ifstream ifs(path, std::ifstream::binary);
 
-        if (!ifs.is_open()) {
+        if (!ifs.good()) {
             return RES_ERROR_NOT_OPEN;
         }
 
@@ -250,11 +239,21 @@ extern "C" {
         return wrap_vector;
     }
 
-    struct PredictResult* FT_Predict(struct WrapperFastText* wrapper, const char* text, int k) {
+    struct WrapperVector* FT_GetSentenceVector(const struct WrapperFastText* wrapper, const char* text) {
+        std::istringstream str(text);
+
+        struct WrapperVector* wrap_vector = Vector(wrapper->model->getDimension());
+
+        wrapper->model->getSentenceVector(str, *wrap_vector->vector);
+
+        return wrap_vector;
+    }
+
+    const struct WrapperPredictResult* FT_Predict(struct WrapperFastText* wrapper, const char* text, int k) {
         std::istringstream str(text);
         std::vector<std::pair<float, std::string>> prediction;
 
-        struct PredictResult* result = new struct PredictResult();
+        struct WrapperPredictResult* result = new struct WrapperPredictResult();
 
         try {
             wrapper->model->predict(str, k, prediction);
@@ -276,5 +275,53 @@ extern "C" {
         delete wrapper->model;
 
         free(wrapper);
+    }
+}
+
+extern "C" {
+    const struct WrapperVector* test_VEC_New(short empty, int sz) {
+        auto wrapper = Vector(sz);
+
+        if(empty) {
+            wrapper->vector->zero();
+        } else {
+            for(unsigned int i=0; i<wrapper->vector->size(); i++) {
+                wrapper->vector->data_[i] = 1. + (1./float(i + 0.0001)) * (float(i) * float(i) * 1.019238);
+            }
+        }
+
+        return wrapper;
+    }
+
+    const struct WrapperPredictResult* test_PRDCT_New(short err, int sz) {
+        srand(42);
+
+        auto wrapper = new struct WrapperPredictResult();
+
+        if(err) {
+            predictResultSetError(wrapper, "test error");
+        }
+
+        auto words = std::vector<std::string> {
+            "слово",
+            "о",
+            "полку",
+            "Игореве",
+            "Бояна",
+            "сказ"
+        };
+
+        predictResultResize(wrapper, sz);
+
+        for(unsigned int i=0; i<sz; i++) {
+            int r = rand();
+            auto rec = std::pair<float, std::string>(float(r)/float(RAND_MAX), words[r % words.size()]);
+
+            predictResultSet(wrapper, i, rec);
+        }
+
+        predictResultFinish(wrapper);
+
+        return wrapper;
     }
 }

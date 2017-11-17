@@ -1,11 +1,14 @@
 #![feature(test)]
 #![feature(unique)]
 #![feature(plugin)]
-#![plugin(clippy)]
 
 extern crate libc;
 extern crate test;
 
-mod fasttext;
 mod testing;
-mod vector;
+mod string;
+
+pub mod dictionary;
+pub mod fasttext;
+pub mod predict;
+pub mod vector;
