@@ -9,3 +9,4 @@ cc = "1"
 
 [dependencies]
 libc = "0.2"
+wordvector = { path = "../wordvector-rs/" }

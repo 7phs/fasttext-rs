@@ -42,6 +42,14 @@ extern "C" {
 
 pub struct FastText(*mut WrapperFastText);
 
+impl Default for FastText {
+    fn default() -> FastText {
+        unsafe {
+            FastText(NewFastText())
+        }
+    }
+}
+
 impl Drop for FastText {
     fn drop(&mut self) {
         unsafe {
@@ -51,12 +59,6 @@ impl Drop for FastText {
 }
 
 impl FastText {
-    pub fn new() -> FastText {
-        unsafe {
-            FastText(NewFastText())
-        }
-    }
-
     pub fn load_model(&mut self, model_path: &Path) -> Result<ResSuccess, Err> {
         unsafe {
             let r = FT_LoadModel(self.0, to_ptr_const_char(model_path).as_ptr() as *const c_char);

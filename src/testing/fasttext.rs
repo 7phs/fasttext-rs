@@ -13,13 +13,13 @@ fn path(p: &str) -> &Path {
 }
 
 #[test]
-fn test_fasttext_new() {
-    FastText::new();
+fn test_fasttext_default() {
+    FastText::default();
 }
 
 #[test]
 fn test_fasttext_load_model() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNKNOWN_PATH)) {
         Ok(_) => assert!(false, "failed to raise an error for an unknown model path"),
@@ -34,7 +34,7 @@ fn test_fasttext_load_model() {
 
 #[test]
 fn test_fasttext_load_vectors() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -63,7 +63,7 @@ fn test_fasttext_load_vectors() {
 
 #[test]
 fn test_fasttext_get_dictionary() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -90,9 +90,9 @@ fn test_fasttext_get_dictionary() {
     }
 
     let expected_word = String::from("златом");
-    let expected_index: i32 = 22;
+    let expected_index: i64 = 22;
 
-    match dict.find(expected_word.as_str()) {
+    match dict.word_index(expected_word.as_str()) {
         Some(index) => assert_eq!(index, expected_index),
         None => {
             println!("failed to found word {}", expected_word);
@@ -111,7 +111,7 @@ fn test_fasttext_get_dictionary() {
 
 #[test]
 fn test_fasttext_get_word_vector() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -161,7 +161,7 @@ fn test_fasttext_get_word_vector() {
 
 #[test]
 fn test_fasttext_get_sentence_vector() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -210,7 +210,7 @@ fn test_fasttext_get_sentence_vector() {
 
 #[test]
 fn test_fasttext_predict_unsupervised() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -232,7 +232,7 @@ fn test_fasttext_predict_unsupervised() {
 
 #[test]
 fn test_fasttext_predict_supervised() {
-    let mut model = FastText::new();
+    let mut model = FastText::default();
 
     match model.load_model(path(SUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),

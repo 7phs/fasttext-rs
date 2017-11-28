@@ -21,16 +21,16 @@ impl Dictionary{
         Dictionary(wrapper)
     }
 
-    pub fn find(&self, word: &str) -> Option<i32> {
+    pub fn word_index(&self, word: &str) -> Option<i64> {
         let index = unsafe { DICT_Find(self.0, word.as_ptr() as *const c_char) };
         if index >= 0 {
-            Some(index)
+            Some(index as i64)
         } else {
             None
         }
     }
 
-    pub fn get_word(&self, index: i32) -> Option<String> {
+    pub fn get_word(&self, index: i64) -> Option<String> {
         let mut c_word = vec![0u8; MAX_WORD_LEN];
 
         let len = unsafe {
