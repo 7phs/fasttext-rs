@@ -34,3 +34,9 @@ Build a supervised model:
 ```
 src/fasttext/fasttext supervised -input supervised_text.txt -output test-data/supervised_model
 ```
+
+# Test
+
+```bash
+cargo test -- --test-threads=1
+```

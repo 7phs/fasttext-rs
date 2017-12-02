@@ -1,23 +1,24 @@
-use wordvector_base::wordvector::WordVectorModel;
-use fasttext::{FastText, Err};
 use std::path::Path;
 
-pub struct FastTextModel(FastText);
+use wordvector_base::WordVectorModel;
 
-impl FastTextModel {
-    pub fn new(path: &str) -> Result<FastTextModel, Err> {
+use fasttext::{Err, FastTextWrapper};
+use FastText;
+
+impl FastText {
+    pub fn with_model(path: &str) -> Result<FastText, Err> {
         let model_path: String = [path, "bin"].join(".");
         let vectors_path: String = [path, "vec"].join(".");
 
-        let mut model = FastText::default();
+        let mut model = FastTextWrapper::default();
         model.load_model(Path::new(&model_path))?;
         model.load_vectors(Path::new(&vectors_path))?;
 
-        Ok(FastTextModel(model))
+        Ok(FastText(model))
     }
 }
 
-impl WordVectorModel for FastTextModel {
+impl WordVectorModel for FastText {
     fn word_index(&self, word: &str) -> Option<i64> {
         self.0.get_dictionary().word_index(word)
     }
@@ -43,7 +44,7 @@ mod testing {
 
     #[test]
     fn test_fasttextmodel_new() {
-        match FastTextModel::new("./test-data/unsupervised_model") {
+        match FastText::with_model("./test-data/unsupervised_model") {
             Ok(model) => assert!(model.word_index("златом").unwrap_or_default() > 0, "check model working"),
             Err(err) => assert!(false, "failed to create a fasttext model {:?}", err),
         };

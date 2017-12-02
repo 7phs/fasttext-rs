@@ -1,4 +1,5 @@
 use fasttext::*;
+use FastText;
 use predict::PredictRecord;
 use std::path::Path;
 
@@ -19,7 +20,7 @@ fn test_fasttext_default() {
 
 #[test]
 fn test_fasttext_load_model() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNKNOWN_PATH)) {
         Ok(_) => assert!(false, "failed to raise an error for an unknown model path"),
@@ -34,7 +35,7 @@ fn test_fasttext_load_model() {
 
 #[test]
 fn test_fasttext_load_vectors() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -63,7 +64,7 @@ fn test_fasttext_load_vectors() {
 
 #[test]
 fn test_fasttext_get_dictionary() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -111,7 +112,7 @@ fn test_fasttext_get_dictionary() {
 
 #[test]
 fn test_fasttext_get_word_vector() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -161,7 +162,7 @@ fn test_fasttext_get_word_vector() {
 
 #[test]
 fn test_fasttext_get_sentence_vector() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -210,7 +211,7 @@ fn test_fasttext_get_sentence_vector() {
 
 #[test]
 fn test_fasttext_predict_unsupervised() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(UNSUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
@@ -232,7 +233,7 @@ fn test_fasttext_predict_unsupervised() {
 
 #[test]
 fn test_fasttext_predict_supervised() {
-    let mut model = FastText::default();
+    let mut model = FastTextWrapper::default();
 
     match model.load_model(path(SUPERVISED_MODEL_PATH)) {
         Ok(_) => assert!(true),
