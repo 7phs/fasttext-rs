@@ -6,9 +6,11 @@ use fasttext::{Err, FastTextWrapper};
 use FastText;
 
 impl FastText {
-    pub fn with_model(path: &str) -> Result<FastText, Err> {
-        let model_path: String = [path, "bin"].join(".");
-        let vectors_path: String = [path, "vec"].join(".");
+    pub fn with_model(path: &Path) -> Result<FastText, Err> {
+        let path_str = path.to_str().unwrap_or_default();
+
+        let model_path = path_str.to_owned() + ".bin";
+        let vectors_path = path_str.to_owned() + ".vec";
 
         let mut model = FastTextWrapper::default();
         model.load_model(Path::new(&model_path))?;
@@ -44,7 +46,7 @@ mod testing {
 
     #[test]
     fn test_fasttextmodel_new() {
-        match FastText::with_model("./test-data/unsupervised_model") {
+        match FastText::with_model(Path::new("./test-data/unsupervised_model")) {
             Ok(model) => assert!(model.word_index("златом").unwrap_or_default() > 0, "check model working"),
             Err(err) => assert!(false, "failed to create a fasttext model {:?}", err),
         };
