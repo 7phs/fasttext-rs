@@ -9,4 +9,4 @@ cc = "1"
 
 [dependencies]
 libc = "0.2"
-wordvector = { path = "../wordvector-rs/" }
+wordvector = { git = "https://bitbucket.org/7phs/7phs-wordvector-rs" }

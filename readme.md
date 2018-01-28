@@ -1,3 +1,6 @@
+The Rust wrapper of FaceBook [Fasttext](https://github.com/facebookresearch/fastText).
+
+
 # Init submodule
 
 Add submodule:
